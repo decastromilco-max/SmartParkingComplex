@@ -1,0 +1,38 @@
+import java.util.Scanner;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        boolean running = true;
+
+        while (running) {
+            System.out.println("\n====== Smart Parking Complex ======");
+            System.out.println("1. Register Vehicle");
+            System.out.println("2. View Available Slots/Reserve Parking Slot");
+            System.out.println("3. Book Parking Slot/Cancel Reservations or Booking");
+            System.out.println("4. Exit");
+            System.out.print("Choose which number (1-4): ");
+
+            int choice = sc.nextInt();
+
+            switch (choice) {
+                case 1:
+                    RegisterVehicleMain.main(null);
+                    break;
+                case 2:
+                    ParkingSystemMain.main(null);
+                    break;
+                case 3:
+                    BookParkingSlotMain.main(null);
+                    break;
+                case 4:
+                    System.out.println("Exiting system. Goodbye!");
+                    running = false;
+                    break;
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+        sc.close();
+    }
+}
