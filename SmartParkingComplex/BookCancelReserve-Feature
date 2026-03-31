@@ -1,0 +1,102 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class ParkingSystem {
+    // Database credentials
+    private static final String URL = "jdbc:BookReserve.db";
+    private static final String USER = "root";
+    private static final String PASSWORD = "yourpassword";
+
+    private static Scanner scanner = new Scanner(System.in);
+
+    // Establishing Database Connection
+    private static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(URL, USER, PASSWORD);
+    }
+
+    public static void main(String[] args) {
+        System.out.println("=== SQL-Based Parking System ===");
+
+        while (true) {
+            System.out.println("\n--- Main Menu ---");
+            System.out.println("1. Reserve a Slot");
+            System.out.println("2. Book a Reserved Slot");
+            System.out.println("3. Cancel Reservation/Booking");
+            System.out.println("4. View All Slot Statuses");
+            System.out.println("5. Exit");
+            System.out.print("Select an option: ");
+
+            int choice = scanner.nextInt();
+            switch (choice) {
+                case 1: updateSlotStatus("Available", "Reserved", "Reserved"); break;
+                case 2: updateSlotStatus("Reserved", "Booked", "Booked"); break;
+                case 3: handleCancellation(); break;
+                case 4: displaySlots(); break;
+                case 5: System.out.println("Shutting down..."); return;
+                default: System.out.println("Invalid input.");
+            }
+        }
+    }
+
+   public static void updateSlotStatus(String currentRequired, String targetStatus, String actionLabel) {
+        System.out.print("Enter Slot ID: ");
+        int id = scanner.nextInt();
+
+        String sql = "UPDATE parking_slots SET status = ? WHERE slot_id = ? AND status = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, targetStatus);
+            pstmt.setInt(2, id);
+            pstmt.setString(3, currentRequired);
+
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("POSITIVE: Slot " + id + " is now " + actionLabel + ".");
+            } else {
+                System.err.println("NEGATIVE: Slot " + id + " is not in '" + currentRequired + "' state.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Database Error: " + e.getMessage());
+        }
+    }
+
+    public static void handleCancellation() {
+        System.out.print("Enter Slot ID to Cancel: ");
+        int id = scanner.nextInt();
+
+        String sql = "UPDATE parking_slots SET status = 'Available' WHERE slot_id = ? AND status IN ('Reserved', 'Booked')";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, id);
+            int rowsAffected = pstmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("POSITIVE: Record removed. Slot " + id + " is now Available.");
+            } else {
+                System.err.println("NEGATIVE: No active reservation/booking found for Slot " + id + ".");
+            }
+        } catch (SQLException e) {
+            System.err.println("Database Error: " + e.getMessage());
+        }
+    }
+
+    public static void displaySlots() {
+        String sql = "SELECT * FROM parking_slots ORDER BY slot_id ASC";
+
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            System.out.println("\n[Slot ID] -> [Current Status]");
+            while (rs.next()) {
+                System.out.println("Slot " + rs.getInt("slot_id") + ": " + rs.getString("status"));
+            }
+        } catch (SQLException e) {
+            System.err.println("Database Error: " + e.getMessage());
+        }
+    }
+}
