@@ -1,0 +1,43 @@
+import java.util.Scanner;
+
+public class RegisterVehicleMain {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        VehicleRegistration info = new VehicleRegistration();
+        boolean running = true;
+
+        while (running) {
+            System.out.println("\n=== Vehicle Registration Menu ===");
+            System.out.println("1. Register a Vehicle");
+            System.out.println("2. Exit");
+            System.out.print("Select an option: ");
+
+            String choice = sc.nextLine();
+
+            switch (choice) {
+                case "1":
+                    System.out.print("Driver Name: ");
+                    String name = sc.nextLine();
+                    System.out.print("Plate Number: ");
+                    String plate = sc.nextLine();
+                    System.out.print("Car Brand: ");
+                    String brand = sc.nextLine();
+
+                    Vehicle newVehicle = new Vehicle(name, plate, brand);
+                    info.registerVehicle(newVehicle);
+
+                    break;
+
+                case "2":
+                    System.out.println("Exiting system. Goodbye!");
+                    running = false;
+                    return;
+
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
+        }
+
+        sc.close();
+    }
+}
