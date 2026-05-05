@@ -1,111 +1,53 @@
-package smartparkinng;
-
-
 import java.sql.*;
 
 public class ParkingSystem {
+    private static SmartParkingRepository repo = new SmartParkingRepository();
 
-    // VIEW AVAILABLE SLOTS
     public static void viewAvailableSlots() {
-        // Changed to 'AVAILABLE' to match your SQLite database content
-        String sql = "SELECT * FROM parking_slots WHERE status = 'AVAILABLE'";
-
-        try (Connection conn = DBConnection.connect();
+        String sql = "SELECT * FROM parkingslot_tbl WHERE status = 'AVAILABLE'";
+        try (Connection conn = SmartParkingRepository.connect();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {
-
-            System.out.println("\n=== Available Slots ===");
+            System.out.println("\n--- Available Slots (Immediate Use) ---");
             boolean found = false;
             while (rs.next()) {
                 found = true;
-                System.out.println(
-                        "ID: " + rs.getInt("slot_id") +
-                                " | Slot: " + rs.getString("slot_number") +
-                                " | Status: " + rs.getString("status")
-                );
+                System.out.println("ID: " + rs.getInt("slotId") + " | Slot: " + rs.getString("slotNumber"));
             }
             if (!found) System.out.println("No slots currently available.");
-
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+        } catch (SQLException e) {
+            System.out.println("Error viewing slots: " + e.getMessage());
         }
     }
 
-    // RESERVE SLOT
-    public static void reserveSlot(int slotId, String userName) {
-        // Ensuring we use 'parking_slots' (plural)
-        String check = "SELECT status FROM parking_slots WHERE slot_id = ?";
-        String insert = "INSERT INTO reservation (slot_id, user_name, reservation_time, status) VALUES (?, ?, datetime('now'), 'Reserved')";
-        String update = "UPDATE parking_slots SET status = 'Reserved' WHERE slot_id = ?";
+    public static boolean reserveSlot(int slotId, String userName, String date) {
+        // 1. Check if it's already taken for that date
+        if (repo.isSlotReservedOnDate(slotId, date)) {
+            System.out.println("Error: Slot " + slotId + " is already reserved for " + date);
+            return false;
+        }
 
-        try (Connection conn = DBConnection.connect()) {
-            PreparedStatement checkStmt = conn.prepareStatement(check);
-            checkStmt.setInt(1, slotId);
-            ResultSet rs = checkStmt.executeQuery();
-
-            // Match 'AVAILABLE' casing
-            if (rs.next() && rs.getString("status").equalsIgnoreCase("AVAILABLE")) {
-                // Insert into reservation table
-                PreparedStatement insertStmt = conn.prepareStatement(insert);
-                insertStmt.setInt(1, slotId);
-                insertStmt.setString(2, userName);
-                insertStmt.executeUpdate();
-
-                // Update parking_slots table
-                PreparedStatement updateStmt = conn.prepareStatement(update);
-                updateStmt.setInt(1, slotId);
-                updateStmt.executeUpdate();
-
-                System.out.println("✅ Slot reserved!");
-            } else {
-                System.out.println("❌ Slot not available.");
+        // 2. Create the reservation entry
+        if (repo.createReservation(slotId, userName, date)) {
+            // 3. CRITICAL FIX: Update the status in parkingslot_tbl so it's no longer 'AVAILABLE'
+            if (repo.updateSlotStatusById(slotId, "RESERVED")) {
+                System.out.println("Success: Slot " + slotId + " has been reserved for " + date + ".");
+                return true;
             }
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
         }
+        System.out.println("Error: Reservation failed.");
+        return false;
     }
 
-    // MARK AS OCCUPIED (CAR ARRIVED)
     public static void occupySlot(int slotId) {
-        // FIXED: Changed 'parking_slot' to 'parking_slots'
-        String sql = "UPDATE parking_slots SET status = 'Occupied' WHERE slot_id = ?";
-
-        try (Connection conn = DBConnection.connect();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, slotId);
-            int rowsAffected = pstmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                System.out.println("🚗 Slot is now Occupied.");
-            } else {
-                System.out.println("❌ Slot ID not found.");
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+        if (repo.updateSlotStatusById(slotId, "Occupied")) {
+            System.out.println("Slot Occupied successfully.");
         }
     }
 
-    // RELEASE SLOT (CAR LEFT)
     public static void releaseSlot(int slotId) {
-        // FIXED: Changed 'parking_slot' to 'parking_slots' and status to 'AVAILABLE'
-        String sql = "UPDATE parking_slots SET status = 'AVAILABLE' WHERE slot_id = ?";
-
-        try (Connection conn = DBConnection.connect();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            pstmt.setInt(1, slotId);
-            int rowsAffected = pstmt.executeUpdate();
-
-            if (rowsAffected > 0) {
-                System.out.println("🅿️ Slot is now Available.");
-            } else {
-                System.out.println("❌ Slot ID not found.");
-            }
-
-        } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+        if (repo.updateSlotStatusById(slotId, "AVAILABLE")) {
+            System.out.println("Slot released and now Available.");
         }
     }
 }
